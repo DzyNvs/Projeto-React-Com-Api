@@ -29,10 +29,10 @@ ViaCEP: Para consulta de endereços a partir de CEP.
 WeatherAPI: Para consulta de informações de clima.
 
 Integrantes: 
-Akira Ogassavara
-André Luiz Anastácio Neves
-Amanda do Carmo Rodrigues da Costa
-Guilherme Pereira Martins
-Júlia Oliveira de Miranda
+Akira Ogassavara, 
+André Luiz Anastácio Neves, 
+Amanda do Carmo Rodrigues da Costa, 
+Guilherme Pereira Martins, 
+Júlia Oliveira de Miranda e
 Pedro Henrique de Castro Tirado
 
