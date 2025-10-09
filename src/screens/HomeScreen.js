@@ -15,13 +15,23 @@ import {
 } from 'react-native';
 import { getAddressByCep, getCurrentWeather } from '../services/api';
 
+// Novos componentes de layout
+import { CustomButton } from '../components/Button/CustomButton';
+import { TextInputField } from '../components/Input/TextInputField';
+import { InfoCard } from '../components/Card/InfoCard';
+import { Title, NormalText, LightText } from '../components/Typography';
+import { colors } from '../styles/colors';
+import { globalStyles } from '../styles/globalStyles';
+
 export default function HomeScreen() {
+  // ESTADOS ORIGINAIS (MANTIDOS)
   const [cep, setCep] = useState('');
   const [address, setAddress] = useState(null);
   const [weather, setWeather] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // FUNÇÃO ORIGINAL (MANTIDA)
   const handleSearch = async () => {
     // Esconde o teclado
     Keyboard.dismiss();
@@ -59,172 +69,113 @@ export default function HomeScreen() {
     }
   };
 
+  // LAYOUT 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <Text style={styles.title}>Busca de Endereço e Clima</Text>
-        <Text style={styles.subtitle}>Digite um CEP para começar</Text>
-
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.input}
-            placeholder="Digite o CEP (só números)"
-            value={cep}
-            onChangeText={setCep}
-            keyboardType="numeric"
-            maxLength={8}
-          />
-          <TouchableOpacity style={styles.button} onPress={handleSearch} disabled={loading}>
-            <Text style={styles.buttonText}>Buscar</Text>
-          </TouchableOpacity>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <ScrollView contentContainerStyle={globalStyles.container}>
+        
+        {/* Cabeçalho */}
+        <View style={[globalStyles.center, globalStyles.mb20]}>
+          <Title>🌤️ Buscar CEP e Clima</Title>
+          <LightText style={globalStyles.mt10}>
+            Digite um CEP para encontrar endereço e clima
+          </LightText>
         </View>
 
-        {loading && <ActivityIndicator size="large" color="#007BFF" style={styles.feedbackArea} />}
-        
-        {error && <Text style={styles.errorText}>{error}</Text>}
-        
-        {address && (
-          <View style={[styles.card, styles.addressCard]}>
-            <Text style={styles.cardTitle}>Endereço Encontrado</Text>
-            <Text style={styles.cardText}><Text style={styles.bold}>Logradouro:</Text> {address.logradouro || 'N/A'}</Text>
-            <Text style={styles.cardText}><Text style={styles.bold}>Bairro:</Text> {address.bairro || 'N/A'}</Text>
-            <Text style={styles.cardText}><Text style={styles.bold}>Cidade:</Text> {address.localidade}</Text>
-            <Text style={styles.cardText}><Text style={styles.bold}>Estado:</Text> {address.uf}</Text>
-            <Text style={styles.cardText}><Text style={styles.bold}>IBGE:</Text> {address.ibge}</Text>
+        {/* Área de Busca */}
+        <View style={globalStyles.mb20}>
+          <TextInputField
+            placeholder="Digite o CEP (8 números)"
+            value={cep}
+            onChangeText={setCep}
+            error={error}
+          />
+          
+          <CustomButton
+            title={loading ? "Buscando..." : "Buscar"}
+            onPress={handleSearch}
+            loading={loading}
+            disabled={loading}
+          />
+        </View>
+
+        {/* Loading */}
+        {loading && (
+          <View style={[globalStyles.center, globalStyles.mt20]}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <LightText style={globalStyles.mt10}>Buscando informações...</LightText>
           </View>
         )}
 
+        {/* Card de Endereço */}
+        {address && (
+          <InfoCard style={globalStyles.mb20}>
+            <Title style={[globalStyles.mb10, { fontSize: 20 }]}>
+              📍 Endereço Encontrado
+            </Title>
+            
+            <NormalText style={globalStyles.mb10}>
+              <LightText>Logradouro: </LightText>
+              {address.logradouro || 'N/A'}
+            </NormalText>
+            
+            <NormalText style={globalStyles.mb10}>
+              <LightText>Bairro: </LightText>
+              {address.bairro || 'N/A'}
+            </NormalText>
+            
+            <NormalText style={globalStyles.mb10}>
+              <LightText>Cidade: </LightText>
+              {address.localidade}
+            </NormalText>
+            
+            <NormalText style={globalStyles.mb10}>
+              <LightText>Estado: </LightText>
+              {address.uf}
+            </NormalText>
+            
+            <NormalText>
+              <LightText>IBGE: </LightText>
+              {address.ibge}
+            </NormalText>
+          </InfoCard>
+        )}
+
+        {/* Card de Clima */}
         {weather && (
-          <View style={[styles.card, styles.weatherCard]}>
-            <Text style={styles.cardTitle}>Clima em {weather.location.name}</Text>
-            <View style={styles.weatherInfo}>
+          <InfoCard>
+            <Title style={[globalStyles.mb10, { fontSize: 20 }]}>
+              🌤️ Clima em {weather.location.name}
+            </Title>
+            
+            <View style={[globalStyles.row, globalStyles.mb10]}>
               <Image 
                 source={{ uri: `https:${weather.current.condition.icon}` }} 
-                style={styles.weatherIcon}
+                style={{ width: 50, height: 50, marginRight: 15 }}
               />
               <View>
-                <Text style={styles.weatherTemp}>{weather.current.temp_c}°C</Text>
-                <Text style={styles.weatherCondition}>{weather.current.condition.text}</Text>
+                <NormalText style={{ fontSize: 24, fontWeight: 'bold' }}>
+                  {weather.current.temp_c}°C
+                </NormalText>
+                <LightText>{weather.current.condition.text}</LightText>
               </View>
             </View>
-             <Text style={styles.cardText}><Text style={styles.bold}>Sensação Térmica:</Text> {weather.current.feelslike_c}°C</Text>
-             <Text style={styles.cardText}><Text style={styles.bold}>Umidade:</Text> {weather.current.humidity}%</Text>
-          </View>
+            
+            <View style={[globalStyles.row, globalStyles.spaceBetween]}>
+              <View>
+                <LightText>Sensação Térmica</LightText>
+                <NormalText>{weather.current.feelslike_c}°C</NormalText>
+              </View>
+              
+              <View>
+                <LightText>Umidade</LightText>
+                <NormalText>{weather.current.humidity}%</NormalText>
+              </View>
+            </View>
+          </InfoCard>
         )}
 
       </ScrollView>
     </SafeAreaView>
   );
 }
-
-// Estilos
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F0F4F8',
-  },
-  scrollContainer: {
-    padding: 20,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#102A43',
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#627D98',
-    textAlign: 'center',
-    marginBottom: 30,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    marginBottom: 20,
-  },
-  input: {
-    flex: 1,
-    height: 50,
-    backgroundColor: '#FFF',
-    borderRadius: 8,
-    paddingHorizontal: 15,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#D9E2EC',
-  },
-  button: {
-    marginLeft: 10,
-    height: 50,
-    backgroundColor: '#007BFF',
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  buttonText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  feedbackArea: {
-    marginTop: 20,
-  },
-  errorText: {
-    marginTop: 20,
-    color: '#D9534F',
-    fontSize: 16,
-    textAlign: 'center',
-  },
-  card: {
-    marginTop: 20,
-    backgroundColor: '#FFF',
-    borderRadius: 8,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  addressCard: {
-    borderColor: '#007BFF',
-    borderLeftWidth: 5,
-  },
-  weatherCard: {
-    borderColor: '#F0AD4E',
-    borderLeftWidth: 5,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    color: '#102A43',
-  },
-  cardText: {
-    fontSize: 16,
-    color: '#334E68',
-    marginBottom: 5,
-  },
-  bold: {
-    fontWeight: 'bold',
-  },
-  weatherInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  weatherIcon: {
-    width: 64,
-    height: 64,
-    marginRight: 15,
-  },
-  weatherTemp: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#102A43',
-  },
-  weatherCondition: {
-    fontSize: 16,
-    color: '#627D98',
-  },
-});
