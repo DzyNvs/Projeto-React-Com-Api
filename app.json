@@ -1,14 +1,14 @@
 {
   "expo": {
     "name": "WeatherPos!",
-    "slug": "WeatherPos!",
+    "slug": "weatherpos",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/icon-app.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/icon-app.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -17,18 +17,19 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/icon-app.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.odavita32.cep"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/icon-app.png"
     },
+    "owner": "dzynvzzz",
     "extra": {
       "eas": {
-        "projectId": "d7a1c067-b3dc-497c-9720-7684b1f1402d"
+        "projectId": "d344eac2-0ba2-4d26-a4cf-8dfc439d8521"
       }
     }
   }
