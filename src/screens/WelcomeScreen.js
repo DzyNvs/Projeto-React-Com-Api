@@ -1,21 +1,42 @@
-// src/screens/WelcomeScreen.js
-
 import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, SafeAreaView, ImageBackground } from 'react-native'; // Importe ImageBackground
+import {
+  StyleSheet,
+  Text,
+  View,
+  TouchableOpacity,
+  SafeAreaView,
+  ImageBackground,
+} from 'react-native';
+import { signOut } from 'firebase/auth'; // 1. Importar signOut
+import { auth } from '../config/firebase'; // 2. Importar auth (verifique o caminho)
 
 export default function WelcomeScreen({ navigation }) {
-
   const goToHomeScreen = () => {
     navigation.navigate('Home');
   };
 
- 
-  const cloudsBackground = { uri: 'https://i.pinimg.com/736x/e2/29/94/e2299480579cedc702576002d063f029.jpg' }; // Substitua por sua imagem real
+  // 3. Função de Logout
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      // O App.js vai detectar a mudança de auth e
+      // automaticamente navegar para a tela de Login.
+    } catch (error) {
+      console.error("Erro ao sair: ", error);
+    }
+  };
+
+  const cloudsBackground = {
+    uri: 'https://i.pinimg.com/736x/e2/29/94/e2299480579cedc702576002d063f029.jpg',
+  };
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Usamos ImageBackground aqui */}
-      <ImageBackground source={cloudsBackground} style={styles.backgroundImage} resizeMode="cover">
+      <ImageBackground
+        source={cloudsBackground}
+        style={styles.backgroundImage}
+        resizeMode="cover"
+      >
         <View style={styles.content}>
           <Text style={styles.title}>WeatherPos</Text>
           <Text style={styles.subtitle}>
@@ -23,6 +44,14 @@ export default function WelcomeScreen({ navigation }) {
           </Text>
           <TouchableOpacity style={styles.button} onPress={goToHomeScreen}>
             <Text style={styles.buttonText}>Começar</Text>
+          </TouchableOpacity>
+
+          {/* 4. Botão de Logout Adicionado */}
+          <TouchableOpacity
+            style={[styles.button, styles.logoutButton]}
+            onPress={handleLogout}
+          >
+            <Text style={styles.buttonText}>Sair</Text>
           </TouchableOpacity>
         </View>
       </ImageBackground>
@@ -33,11 +62,9 @@ export default function WelcomeScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-   
-    // backgroundColor: '#E0F7FA', /
   },
   backgroundImage: {
-    flex: 1, 
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -45,7 +72,7 @@ const styles = StyleSheet.create({
     padding: 20,
     alignItems: 'center',
     width: '90%',
-    backgroundColor: 'rgba(255, 255, 255, 0.7)', 
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
     borderRadius: 15,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -76,10 +103,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 5,
+    width: '100%',
+    alignItems: 'center',
   },
   buttonText: {
     color: '#FFF',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  // Estilo para o botão de logout
+  logoutButton: {
+    marginTop: 15,
+    backgroundColor: '#D9534F', // Um vermelho para "Sair"
   },
 });
