@@ -12,7 +12,7 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
-// 1. Importe o 'signOut'
+// Importamos o signOut para deslogar após o registro
 import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 // Importa o auth e db do seu arquivo de configuração
@@ -20,10 +20,9 @@ import { auth, db } from '../config/firebase';
 
 // Reutiliza o tema
 const themeColors = {
-  primary: '#0077B6', // Azul Oceano
-  secondary: '#90E0EF', // Azul Céu
-  background: '#F4E8D1', // Areia
-  text: '#0A2E36', // Texto (Azul Escuro)
+  primary: '#0077B6', 
+  secondary: '#90E0EF', 
+  text: '#0A2E36', 
   white: '#FFFFFF',
   error: '#B00020',
 };
@@ -60,22 +59,21 @@ export default function RegisterScreen({ navigation }) {
     setLoading(true);
     setError('');
     try {
-      // 1. Cria o usuário no Firebase Auth (cuida da senha)
+      // 1. Cria o usuário no Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // 2. Salva os dados no Firestore (SEM A SENHA)
+      // 2. Salva os dados no Firestore (Coleção 'users')
       await setDoc(doc(db, 'users', user.uid), {
         uid: user.uid,
-        PrimeiroNome: nome, // O campo no banco é "PrimeiroNome"
+        PrimeiroNome: nome, 
         email: email,
       });
 
-      // 3. (NOVA ETAPA) Desloga o usuário recém-criado
-      // Isso garante que o App.js não nos mova para a WelcomeScreen.
+      // 3. Desloga o usuário (para forçar a ida ao Login)
       await signOut(auth);
 
-      // 4. Navega para a tela de Login (como você pediu)
+      // 4. Navega para a tela de Login
       navigation.navigate('Login');
 
     } catch (err) {
@@ -147,7 +145,7 @@ export default function RegisterScreen({ navigation }) {
   );
 }
 
-// Estilos (styles) permanecem os mesmos
+// Estilos (styles)
 const styles = StyleSheet.create({
   backgroundImage: {
     flex: 1,
