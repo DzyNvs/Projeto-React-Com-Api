@@ -1,4 +1,6 @@
 // Importa a biblioteca axios, que nos ajuda a fazer chamadas a APIs de forma simples.
+// acpu bkic avzd qmsk
+
 import axios from 'axios';
 
 // =====================================================================================
