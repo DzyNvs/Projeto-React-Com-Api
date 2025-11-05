@@ -12,15 +12,14 @@ import {
   Platform,
   ImageBackground,
 } from 'react-native';
-import emailjs from '@emailjs/browser'; // 1. Importar o EmailJS
-import { signInWithEmailAndPassword } from 'firebase/auth'; // Importar o login do Firebase
+// NÃO HÁ IMPORTAÇÃO do EmailJS (corrigido!)
+import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../config/firebase'; // Importar o auth (verifique seu caminho)
 
-// 2. ⬇️⬇️ COLOQUE SUAS CHAVES DO EMAILJS AQUI ⬇️⬇️
-// (Obtidas no painel do EmailJS)
-const EMAILJS_PUBLIC_KEY = '_4GugrccKCI1bIh5S';
-const EMAILJS_SERVICE_ID = 'service_d5fzrq4';
-const EMAILJS_TEMPLATE_ID = 'template_rcdy4on';
+// ⬇️⬇️ COLOQUE SUAS CHAVES DO EMAILJS AQUI ⬇️⬇️
+const EMAILJS_PUBLIC_KEY = 'SUA_PUBLIC_KEY_AQUI';
+const EMAILJS_SERVICE_ID = 'SEU_SERVICE_ID_AQUI';
+const EMAILJS_TEMPLATE_ID = 'SEU_TEMPLATE_ID_AQUI';
 // ⬆️⬆️ COLOQUE SUAS CHAVES DO EMAILJS AQUI ⬆️⬆️
 
 
@@ -41,23 +40,19 @@ const loginBackground = { uri: 'https://images.unsplash.com/photo-1507525428034-
 const LoginScreen = ({ navigation }) => {
   // Estados
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState(''); // Precisamos da senha real
+  const [password, setPassword] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [telaAtiva, setTelaAtiva] = useState('login'); // 'login' ou 'otp'
-  const [codigoGerado, setCodigoGerado] = useState(''); // Onde guardamos o OTP
+  const [codigoGerado, setCodigoGerado] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Inicializa o EmailJS (só precisa rodar uma vez)
-  useEffect(() => {
-    emailjs.init(EMAILJS_PUBLIC_KEY);
-  }, []);
+  // Não precisamos mais do useEffect do emailjs.init()
 
   // --- Funções de Lógica ---
 
   const gerarOTP = () => {
-    // Gera um número aleatório de 6 dígitos
     const novoCodigo = Math.floor(100000 + Math.random() * 900000).toString();
-    setCodigoGerado(novoCodigo); // Salva no estado para verificação posterior
+    setCodigoGerado(novoCodigo);
     console.log("CÓDIGO OTP GERADO (para testes): " + novoCodigo);
     return novoCodigo;
   };
@@ -69,20 +64,33 @@ const LoginScreen = ({ navigation }) => {
     }
     setLoading(true);
 
-    // 1. Gerar o código
     const codigo = gerarOTP();
 
-    // 2. Preparar os parâmetros para o template do EmailJS
-    // A 'key' (ex: 'codigo_otp') TEM QUE SER a mesma que você
-    // definiu no seu template no site do EmailJS (ex: {{codigo_otp}})
-    const templateParams = {
-      email_para: email, // Um parâmetro para o e-mail do usuário
-      codigo_otp: codigo,  // A variável do código
+    // 1. Preparar os dados para a API do EmailJS
+    const data = {
+      service_id: EMAILJS_SERVICE_ID,
+      template_id: EMAILJS_TEMPLATE_ID,
+      user_id: EMAILJS_PUBLIC_KEY,
+      template_params: {
+        email_para: email,
+        codigo_otp: codigo,
+      }
     };
 
     try {
-      // 3. Enviar o e-mail DE VERDADE
-      await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, templateParams);
+      // 2. Enviar o e-mail DE VERDADE usando fetch
+      const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      // 3. Verificar se a chamada de API foi bem-sucedida
+      if (!response.ok) {
+        throw new Error('A resposta da API EmailJS não foi OK.');
+      }
       
       // 4. Mudar para a tela de verificação
       setTelaAtiva('otp');
@@ -104,31 +112,25 @@ const LoginScreen = ({ navigation }) => {
 
     setLoading(true);
 
-    // 1. Lógica principal: Comparar o que o usuário digitou com o código gerado
     if (otpCode === codigoGerado) {
-      // 2. O CÓDIGO ESTÁ CORRETO!
-      // Agora, fazemos o login DE VERDADE no Firebase com o e-mail e senha
-      // que o usuário já digitou na primeira tela.
       try {
         await signInWithEmailAndPassword(auth, email, password);
         // SUCESSO! O App.js (onAuthStateChanged) vai detectar
-        // este login e navegar para a WelcomeScreen.
       } catch (e) {
-        // O OTP estava certo, mas a senha do Firebase estava errada
         Alert.alert('Erro de Login', 'E-mail ou senha incorretos. Por favor, tente novamente.');
-        setTelaAtiva('login'); // Volta para a tela de login
+        setTelaAtiva('login');
       }
-      
     } else {
-      // 3. O CÓDIGO ESTÁ INCORRETO
       Alert.alert('Erro', 'Código OTP inválido. Tente novamente.');
-      setOtpCode(''); // Limpa o campo para nova tentativa
+      setOtpCode(''); // Limpa o campo
     }
     
     setLoading(false);
   };
 
-  // --- Renderização das Telas ---
+  // --- Renderização das Telas (JSX) ---
+  // (O JSX e os Estilos abaixo são os mesmos de antes,
+  // apenas copiados aqui para o arquivo ficar completo)
 
   // Tela 1: Solicitar E-mail, Senha e Enviar OTP
   const renderLoginTela = () => (
