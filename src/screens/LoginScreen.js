@@ -9,11 +9,11 @@ import {
   Alert, 
   ActivityIndicator, 
   KeyboardAvoidingView,
-  Platform, // 1. Precisamos importar o 'Platform'
+  Platform, // Mantido para o 'behavior' do KeyboardAvoidingView
   ImageBackground,
 } from 'react-native';
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { auth } from '../config/firebase'; 
+import { auth } from '../config/firebase'; // Verifique o caminho do seu config
 
 // Suas chaves do EmailJS (corretas)
 const EMAILJS_PUBLIC_KEY = '_4GugrccKCI1bIh5S';
@@ -82,89 +82,55 @@ const LoginScreen = ({ navigation }) => {
       return; 
     }
 
-    // 2. ETAPA 2: LÓGICA HÍBRIDA (Web vs Nativo)
+    // 2. ETAPA 2: LÓGICA NÃO-HÍBRIDA (Vai rodar em todas as plataformas)
     
-    codigoGerado = gerarOTP(); // Gera o código em ambos os casos
+    codigoGerado = gerarOTP(); // Gera o código
 
-    if (Platform.OS === 'web') {
-      // --- ESTAMOS NO NAVEGADOR (WEB) ---
+    try {
       // Fazer o envio REAL com EmailJS
-      try {
-        const data = {
-          service_id: EMAILJS_SERVICE_ID,
-          template_id: EMAILJS_TEMPLATE_ID,
-          user_id: EMAILJS_PUBLIC_KEY,
-          template_params: {
-            to_email: email,
-            codigo_otp: codigoGerado,
-          }
-        };
-
-        const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(errorText);
+      const data = {
+        service_id: EMAILJS_SERVICE_ID,
+        template_id: EMAILJS_TEMPLATE_ID,
+        user_id: EMAILJS_PUBLIC_KEY,
+        template_params: {
+          to_email: email,
+          codigo_otp: codigoGerado,
         }
-        
-        console.log("EmailJS (Web): E-mail real enviado.");
-        
-        setLoading(false); // 1. Pare o loading ANTES de navegar
+      };
 
-        // ETAPA 3: SUCESSO! Navega para a tela OTP.
-        navigation.navigate('Otp', { // 2. Navegue
-          email: email,
-          password: password,
-          codigoGerado: codigoGerado
-        });
+      // Esta chamada 'fetch' será tentada no Celular e na Web
+      const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
 
-      } catch (e) {
-        // Erro na ETAPA 2 (EmailJS)
-        console.error("ERRO NA ETAPA 2 (EMAILJS):", e.message);
-        Alert.alert( 
-          'Erro ao Enviar OTP', 
-          `Não foi possível enviar o código. (Erro: ${e.message})`
-        );
-        setLoading(false);
+      if (!response.ok) {
+        const errorText = await response.text();
+        // No Expo Go / APK, o erro será "API calls are disabled..."
+        throw new Error(errorText);
       }
+      
+      console.log("EmailJS: E-mail real enviado (ou tentado).");
+      
+      setLoading(false); // 1. Pare o loading ANTES de navegar
 
-    } else {
-      // --- ESTAMOS NO CELULAR (NATIVO: Android/iOS) ---
-      // O EmailJS não funciona aqui. Vamos SIMULAR.
-      
-      console.log("Nativo (Expo Go): Simulando o envio de e-mail.");
-      
-      // ***** A CORREÇÃO DO GLITCH ESTÁ AQUI *****
-      
-      // 1. Pare o loading IMEDIATAMENTE. Isso para o "glitch".
-      setLoading(false); 
+      // ETAPA 3: SUCESSO! Navega para a tela OTP.
+      navigation.navigate('Otp', { // 2. Navegue
+        email: email,
+        password: password,
+        codigoGerado: codigoGerado
+      });
 
-      // 2. Mostre o alerta de simulação.
-      Alert.alert(
-        'Simulação (Expo Go)', // Título
-        `Seu código de simulação é: ${codigoGerado}`, // Mensagem
-        [ // Botões
-          {
-            text: 'OK', 
-            onPress: () => {
-              // 3. NAVEGUE SOMENTE DEPOIS que o usuário clicar em OK.
-              console.log("Usuário clicou em OK, navegando para OTP...");
-              navigation.navigate('Otp', {
-                email: email,
-                password: password,
-                codigoGerado: codigoGerado
-              });
-            }
-          }
-        ]
+    } catch (e) {
+      // Erro na ETAPA 2 (EmailJS)
+      console.error("ERRO NA ETAPA 2 (EMAILJS):", e.message);
+      // Este Alert vai mostrar "API calls are disabled..." no Expo Go/APK
+      Alert.alert( 
+        'Erro ao Enviar OTP', 
+        `Não foi possível enviar o código. (Erro: ${e.message})`
       );
-      
-      // Removemos a navegação e o setLoading(false) daqui,
-      // pois eles agora estão DENTRO do callback do Alert.
+      setLoading(false);
     }
   };
 
