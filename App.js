@@ -11,6 +11,8 @@ import WelcomeScreen from './src/screens/WelcomeScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
+// 1. Importar a nova tela de OTP
+import OtpScreen from './src/screens/OtpScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -23,6 +25,8 @@ function AuthStack() {
     >
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
+      {/* 2. Adicionar a tela de OTP à pilha de autenticação */}
+      <Stack.Screen name="Otp" component={OtpScreen} />
     </Stack.Navigator>
   );
 }

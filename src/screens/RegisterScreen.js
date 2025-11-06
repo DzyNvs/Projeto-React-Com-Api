@@ -15,20 +15,20 @@ import {
 // Importamos o signOut para deslogar após o registro
 import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
-// Importa o auth e db do seu arquivo de configuração
+// Importa o auth e db do seu arquivo de configuração CORRIGIDO
 import { auth, db } from '../config/firebase'; 
 
-// Reutiliza o tema
+// Reutiliza o tema "praiano"
 const themeColors = {
-  primary: '#0077B6', 
-  secondary: '#90E0EF', 
-  text: '#0A2E36', 
+  primary: '#0077B6', // Azul Oceano
+  secondary: '#90E0EF', // Azul Céu
+  text: '#0A2E36', // Texto (Azul Escuro)
   white: '#FFFFFF',
   error: '#B00020',
 };
 
 // Imagem de fundo
-const registerBackground = { uri: 'https://images.unsplash.com/photo-1483728642387-6c351b4d1eed?q=80&w=2072&auto=format&fit=crop' };
+const registerBackground = { uri: 'https://images.unsplash.com/photo-1483728642387-6c351b4d1eed?q=80&w=2072&auto/format&fit=crop' };
 
 // Função auxiliar para tratar erros do Firebase
 const getErrorMessage = (errorCode) => {
@@ -64,6 +64,7 @@ export default function RegisterScreen({ navigation }) {
       const user = userCredential.user;
 
       // 2. Salva os dados no Firestore (Coleção 'users')
+      // (Salvando os campos que você pediu: uid, PrimeiroNome, email)
       await setDoc(doc(db, 'users', user.uid), {
         uid: user.uid,
         PrimeiroNome: nome, 
@@ -73,7 +74,7 @@ export default function RegisterScreen({ navigation }) {
       // 3. Desloga o usuário (para forçar a ida ao Login)
       await signOut(auth);
 
-      // 4. Navega para a tela de Login
+      // 4. Navega para a tela de Login (como você pediu)
       navigation.navigate('Login');
 
     } catch (err) {

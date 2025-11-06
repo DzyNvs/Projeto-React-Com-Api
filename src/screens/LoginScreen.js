@@ -1,26 +1,26 @@
-import React, { useState, useEffect }
-from 'react';
+import React, { useState, useCallback } from 'react'; // 1. Importar 'useCallback'
+import { useFocusEffect } from '@react-navigation/native'; // 2. Importar o 'useFocusEffect'
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert, // Usado para mostrar mensagens de erro
+  Alert, // Usado para erros de rede/EmailJS
   ActivityIndicator, // Para o loading
   KeyboardAvoidingView,
   Platform,
   ImageBackground,
 } from 'react-native';
-// NÃO HÁ IMPORTAÇÃO do EmailJS (corrigido!)
-import { signInWithEmailAndPassword } from 'firebase/auth';
+// 3. Precisamos do 'signOut' para o novo fluxo
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { auth } from '../config/firebase'; // Importar o auth (verifique seu caminho)
 
-// ⬇️⬇️ COLOQUE SUAS CHAVES DO EMAILJS AQUI ⬇️⬇️
-const EMAILJS_PUBLIC_KEY = 'SUA_PUBLIC_KEY_AQUI';
-const EMAILJS_SERVICE_ID = 'SEU_SERVICE_ID_AQUI';
-const EMAILJS_TEMPLATE_ID = 'SEU_TEMPLATE_ID_AQUI';
-// ⬆️⬆️ COLOQUE SUAS CHAVES DO EMAILJS AQUI ⬆️⬆️
+// ⬇️⬇️ Suas chaves do EmailJS (corretas) ⬇️⬇️
+const EMAILJS_PUBLIC_KEY = '_4GugrccKCI1bIh5S';
+const EMAILJS_SERVICE_ID = 'service_d5fzrq4';
+const EMAILJS_TEMPLATE_ID = 'template_q910keg';
+// ⬆️⬆️ Suas chaves do EmailJS (corretas) ⬆️⬆️
 
 
 // Reutiliza o tema
@@ -41,44 +41,76 @@ const LoginScreen = ({ navigation }) => {
   // Estados
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [otpCode, setOtpCode] = useState('');
-  const [telaAtiva, setTelaAtiva] = useState('login'); // 'login' ou 'otp'
-  const [codigoGerado, setCodigoGerado] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(''); 
 
-  // Não precisamos mais do useEffect do emailjs.init()
+  // 4. A CORREÇÃO DO F5/LOGOUT: Reseta o estado toda vez que a tela focar
+  useFocusEffect(
+    useCallback(() => {
+      // Esta função roda toda vez que você "chega" nesta tela
+      // (seja por F5, ou voltando do Logout)
+      console.log("Focando na tela de Login, resetando estados...");
+      setLoading(false);
+      setError('');
+      
+      // Não há "função de limpeza" (return) aqui,
+      // pois era ela que estava quebrando a navegação.
+    }, []) // O array vazio garante que isso só rode ao focar
+  );
+
 
   // --- Funções de Lógica ---
 
   const gerarOTP = () => {
+    // 5. Corrigido: removemos o setCodigoGerado (que causava erro)
     const novoCodigo = Math.floor(100000 + Math.random() * 900000).toString();
-    setCodigoGerado(novoCodigo);
     console.log("CÓDIGO OTP GERADO (para testes): " + novoCodigo);
     return novoCodigo;
   };
 
-  const handleEnviarCodigo = async () => {
+  // Esta é a função com o fluxo CORRETO
+  const handleLoginPress = async () => {
     if (!email || !password) {
-      Alert.alert('Erro', 'Por favor, preencha seu e-mail e senha.');
+      setError('Por favor, preencha seu e-mail e senha.');
       return;
     }
     setLoading(true);
+    setError(''); // Limpa erros antigos
 
-    const codigo = gerarOTP();
-
-    // 1. Preparar os dados para a API do EmailJS
-    const data = {
-      service_id: EMAILJS_SERVICE_ID,
-      template_id: EMAILJS_TEMPLATE_ID,
-      user_id: EMAILJS_PUBLIC_KEY,
-      template_params: {
-        email_para: email,
-        codigo_otp: codigo,
-      }
-    };
-
+    // ETAPA 1: Validar as credenciais no Firebase PRIMEIRO
+    let codigoGerado; // Declaramos aqui para estar disponível
     try {
-      // 2. Enviar o e-mail DE VERDADE usando fetch
+      await signInWithEmailAndPassword(auth, email, password);
+      // Se chegou aqui, o e-mail e senha estão CORRETOS.
+      // Deslogamos imediatamente, pois só queríamos validar.
+      await signOut(auth); 
+    } catch (e) {
+      setLoading(false);
+      console.error("ERRO NA ETAPA 1 (FIREBASE):", e.code, e.message);
+      
+      let errorMessage = 'E-mail ou senha incorretos.'; // Padrão
+      if (e.code === 'auth/network-request-failed') {
+        errorMessage = 'Erro de rede. Verifique sua conexão.';
+      }
+      
+      setError(errorMessage); // Mostra o erro na tela
+      return; // Para a execução
+    }
+
+    // ETAPA 2: Credenciais validadas. Agora, enviar o e-mail OTP.
+    try {
+      codigoGerado = gerarOTP();
+
+      const data = {
+        service_id: EMAILJS_SERVICE_ID,
+        template_id: EMAILJS_TEMPLATE_ID,
+        user_id: EMAILJS_PUBLIC_KEY,
+        template_params: {
+          to_email: email, // Corrigido para 'to_email' (que configuramos no EmailJS)
+          codigo_otp: codigoGerado,
+        }
+      };
+
       const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
         method: 'POST',
         headers: {
@@ -87,126 +119,33 @@ const LoginScreen = ({ navigation }) => {
         body: JSON.stringify(data),
       });
 
-      // 3. Verificar se a chamada de API foi bem-sucedida
       if (!response.ok) {
-        throw new Error('A resposta da API EmailJS não foi OK.');
+        const errorText = await response.text();
+        console.error("Erro do EmailJS:", errorText);
+        throw new Error(errorText); // Joga o erro do EmailJS
       }
       
-      // 4. Mudar para a tela de verificação
-      setTelaAtiva('otp');
-      Alert.alert('Código Enviado', `Enviamos um código de 6 dígitos para ${email}.`);
+      // ETAPA 3: SUCESSO! E-mail enviado. Navega para a tela OTP.
+      // Passamos os dados necessários para a próxima tela
+      navigation.navigate('Otp', { 
+        email: email,
+        password: password,
+        codigoGerado: codigoGerado
+      });
 
     } catch (e) {
-      console.error(e);
-      Alert.alert('Erro ao Enviar', 'Não foi possível enviar o código. Verifique suas chaves do EmailJS e tente novamente.');
-    } finally {
-      setLoading(false);
+      // Erro na ETAPA 2 (EmailJS)
+      console.error("ERRO NA ETAPA 2 (EMAILJS):", e.message);
+      Alert.alert( 
+        'Erro ao Enviar OTP', 
+        `Não foi possível enviar o código. (Erro: ${e.message})`
+      );
+      setLoading(false); // Aqui sim, paramos o loading
     }
   };
 
-  const handleVerificarCodigo = async () => {
-    if (otpCode.length !== 6) {
-      Alert.alert('Erro', 'O código deve ter 6 dígitos.');
-      return;
-    }
 
-    setLoading(true);
-
-    if (otpCode === codigoGerado) {
-      try {
-        await signInWithEmailAndPassword(auth, email, password);
-        // SUCESSO! O App.js (onAuthStateChanged) vai detectar
-      } catch (e) {
-        Alert.alert('Erro de Login', 'E-mail ou senha incorretos. Por favor, tente novamente.');
-        setTelaAtiva('login');
-      }
-    } else {
-      Alert.alert('Erro', 'Código OTP inválido. Tente novamente.');
-      setOtpCode(''); // Limpa o campo
-    }
-    
-    setLoading(false);
-  };
-
-  // --- Renderização das Telas (JSX) ---
-  // (O JSX e os Estilos abaixo são os mesmos de antes,
-  // apenas copiados aqui para o arquivo ficar completo)
-
-  // Tela 1: Solicitar E-mail, Senha e Enviar OTP
-  const renderLoginTela = () => (
-    <View style={styles.card}>
-      <Text style={styles.title}>Login</Text>
-      <Text style={styles.subtitle}>Informe seus dados para receber o código de acesso.</Text>
-
-      <TextInput
-        style={styles.input}
-        placeholder="Seu e-mail"
-        placeholderTextColor="#888"
-        keyboardType="email-address"
-        autoCapitalize="none"
-        value={email}
-        onChangeText={setEmail}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Sua senha"
-        placeholderTextColor="#888"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
-
-      <TouchableOpacity
-        style={[styles.button, loading && styles.buttonDisabled]}
-        onPress={handleEnviarCodigo}
-        disabled={loading}
-      >
-        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Receber Código OTP</Text>}
-      </TouchableOpacity>
-      
-      <View style={styles.registerContainer}>
-        <Text style={styles.registerText}>Não tem uma conta? </Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-          <Text style={styles.registerLink}>Registre-se</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-
-  // Tela 2: Inserir o Código OTP
-  const renderOTPTela = () => (
-    <View style={styles.card}>
-      <Text style={styles.title}>Verificação</Text>
-      <Text style={styles.subtitle}>
-        Digite o código de 6 dígitos enviado para: **{email}**
-      </Text>
-
-      <TextInput
-        style={styles.otpInput}
-        placeholder="------"
-        placeholderTextColor="#ccc"
-        keyboardType="numeric"
-        maxLength={6}
-        value={otpCode}
-        onChangeText={setOtpCode}
-        textAlign='center'
-      />
-
-      <TouchableOpacity
-        style={[styles.button, loading && styles.buttonDisabled]}
-        onPress={handleVerificarCodigo}
-        disabled={loading}
-      >
-        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Verificar e Entrar</Text>}
-      </TouchableOpacity>
-      
-      <TouchableOpacity onPress={() => setTelaAtiva('login')}>
-        <Text style={styles.registerLink}>Voltar</Text>
-      </TouchableOpacity>
-    </View>
-  );
-
-  // O componente renderiza a tela que estiver ativa
+  // --- Renderização (JSX) ---
   return (
     <ImageBackground 
       source={loginBackground} 
@@ -217,7 +156,56 @@ const LoginScreen = ({ navigation }) => {
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        {telaAtiva === 'login' ? renderLoginTela() : renderOTPTela()}
+        {/* A TELA DE LOGIN (Sempre visível) */}
+        <View style={styles.card}>
+          <Text style={styles.title}>Login</Text>
+          <Text style={styles.subtitle}>Informe seus dados para continuar.</Text>
+
+          {/* ÁREA DE ERRO NA TELA */}
+          {error && (
+            <Text style={styles.errorText}>{error}</Text>
+          )}
+
+          <TextInput
+            style={styles.input}
+            placeholder="Seu e-mail"
+            placeholderTextColor="#888"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            value={email}
+            onChangeText={(text) => {
+              setEmail(text);
+              setError(''); // Limpa o erro ao digitar
+            }}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Sua senha"
+            placeholderTextColor="#888"
+            secureTextEntry
+            value={password}
+            onChangeText={(text) => {
+              setPassword(text);
+              setError(''); // Limpa o erro ao digitar
+            }}
+          />
+
+          <TouchableOpacity
+            style={[styles.button, loading && styles.buttonDisabled]}
+            onPress={handleLoginPress}
+            disabled={loading}
+          >
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Entrar</Text>}
+          </TouchableOpacity>
+          
+          <View style={styles.registerContainer}>
+            <Text style={styles.registerText}>Não tem uma conta? </Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+              <Text style={styles.registerLink}>Registre-se</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
       </KeyboardAvoidingView>
     </ImageBackground>
   );
@@ -265,20 +253,6 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     color: themeColors.text,
   },
-  otpInput: { // Estilo do professor (melhorado)
-    width: '90%',
-    alignSelf: 'center',
-    height: 60,
-    backgroundColor: themeColors.white,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: themeColors.primary,
-    fontSize: 28,
-    letterSpacing: 10, // Simula o espaçamento
-    textAlign: 'center',
-    marginBottom: 20,
-    color: themeColors.text,
-  },
   button: {
     height: 50,
     backgroundColor: themeColors.primary,
@@ -303,12 +277,18 @@ const styles = StyleSheet.create({
     color: themeColors.text,
     fontSize: 14,
   },
-  registerLink: { // Usado para "Registre-se" e "Voltar"
+  registerLink: { // Usado para "Registre-se"
     color: themeColors.primary,
     fontSize: 14,
     fontWeight: 'bold',
+  },
+  // O estilo de erro na tela
+  errorText: {
+    color: themeColors.error,
+    fontSize: 15,
     textAlign: 'center',
-    marginTop: 20,
+    marginBottom: 15,
+    fontWeight: 'bold',
   },
 });
 

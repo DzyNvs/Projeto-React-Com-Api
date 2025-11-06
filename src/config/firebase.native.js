@@ -1,9 +1,12 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
-// Esta é a importação PADRÃO/WEB
-import { getAuth } from 'firebase/auth'; 
 
-// Sua configuração do Firebase (continua a mesma)
+// Estas são as importações NATIVAS
+import { initializeAuth } from 'firebase/auth';
+import { getReactNativePersistence } from 'firebase/auth/react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Sua configuração do Firebase (copie e cole a mesma)
 const firebaseConfig = {
   apiKey: "AIzaSyCYPyzWlBfkT5QiTIVKfeYkNih7M3ujzYw",
   authDomain: "appfirebasereactnative-e98d6.firebaseapp.com",
@@ -20,8 +23,10 @@ const app = initializeApp(firebaseConfig);
 // Inicializa o FIRESTORE
 export const db = getFirestore(app);
 
-// Inicialização do Auth para WEB
-const auth = getAuth(app);
+// Inicialização do Auth para NATIVO (com AsyncStorage)
+const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(AsyncStorage)
+});
 
 // Exporta o auth
 export { auth };

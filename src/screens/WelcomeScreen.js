@@ -7,20 +7,20 @@ import {
   SafeAreaView,
   ImageBackground,
 } from 'react-native';
-import { signOut } from 'firebase/auth'; // 1. Importar signOut
-import { auth } from '../config/firebase'; // 2. Importar auth (verifique o caminho)
+import { signOut } from 'firebase/auth'; 
+import { auth } from '../config/firebase'; // Verifique se este caminho está correto
 
 export default function WelcomeScreen({ navigation }) {
   const goToHomeScreen = () => {
     navigation.navigate('Home');
   };
 
-  // 3. Função de Logout
+  // Esta é a função de logout simples e correta
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      // O App.js vai detectar a mudança de auth e
-      // automaticamente navegar para a tela de Login.
+      // O App.js (com onAuthStateChanged) vai detectar o signOut
+      // e o LoginScreen.js (com useFocusEffect) vai limpar a tela.
     } catch (error) {
       console.error("Erro ao sair: ", error);
     }
@@ -46,7 +46,7 @@ export default function WelcomeScreen({ navigation }) {
             <Text style={styles.buttonText}>Começar</Text>
           </TouchableOpacity>
 
-          {/* 4. Botão de Logout Adicionado */}
+          {/* Botão de Logout */}
           <TouchableOpacity
             style={[styles.button, styles.logoutButton]}
             onPress={handleLogout}
