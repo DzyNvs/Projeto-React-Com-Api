@@ -1,40 +1,36 @@
-import React, { useState, useCallback } from 'react'; // 1. Importar 'useCallback'
-import { useFocusEffect } from '@react-navigation/native'; // 2. Importar o 'useFocusEffect'
+import React, { useState } from 'react'; 
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert, // Usado para erros de rede/EmailJS
-  ActivityIndicator, // Para o loading
+  Alert, 
+  ActivityIndicator, 
   KeyboardAvoidingView,
-  Platform,
+  Platform, // 1. Precisamos importar o 'Platform'
   ImageBackground,
 } from 'react-native';
-// 3. Precisamos do 'signOut' para o novo fluxo
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { auth } from '../config/firebase'; // Importar o auth (verifique seu caminho)
+import { auth } from '../config/firebase'; 
 
-// ⬇️⬇️ Suas chaves do EmailJS (corretas) ⬇️⬇️
+// Suas chaves do EmailJS (corretas)
 const EMAILJS_PUBLIC_KEY = '_4GugrccKCI1bIh5S';
 const EMAILJS_SERVICE_ID = 'service_d5fzrq4';
 const EMAILJS_TEMPLATE_ID = 'template_q910keg';
-// ⬆️⬆️ Suas chaves do EmailJS (corretas) ⬆️⬆️
-
 
 // Reutiliza o tema
 const themeColors = {
-  primary: '#0077B6', // Azul Oceano
-  secondary: '#90E0EF', // Azul Céu
-  text: '#0A2E36', // Texto (Azul Escuro)
+  primary: '#0077B6', 
+  secondary: '#90E0EF', 
+  text: '#0A2E36', 
   white: '#FFFFFF',
   error: '#B00020',
 };
 
 // Imagem de fundo
-const loginBackground = { uri: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=2073&auto=format&fit=crop' };
-
+const loginBackground = { uri: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=2073&auto/format&fit=crop' };
 
 // O componente principal da tela
 const LoginScreen = ({ navigation }) => {
@@ -44,25 +40,18 @@ const LoginScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(''); 
 
-  // 4. A CORREÇÃO DO F5/LOGOUT: Reseta o estado toda vez que a tela focar
+  // Corrige o bug do F5/Logout
   useFocusEffect(
-    useCallback(() => {
-      // Esta função roda toda vez que você "chega" nesta tela
-      // (seja por F5, ou voltando do Logout)
+    () => {
       console.log("Focando na tela de Login, resetando estados...");
       setLoading(false);
       setError('');
-      
-      // Não há "função de limpeza" (return) aqui,
-      // pois era ela que estava quebrando a navegação.
-    }, []) // O array vazio garante que isso só rode ao focar
+    }
   );
-
 
   // --- Funções de Lógica ---
 
   const gerarOTP = () => {
-    // 5. Corrigido: removemos o setCodigoGerado (que causava erro)
     const novoCodigo = Math.floor(100000 + Math.random() * 900000).toString();
     console.log("CÓDIGO OTP GERADO (para testes): " + novoCodigo);
     return novoCodigo;
@@ -75,72 +64,107 @@ const LoginScreen = ({ navigation }) => {
       return;
     }
     setLoading(true);
-    setError(''); // Limpa erros antigos
+    setError(''); 
 
     // ETAPA 1: Validar as credenciais no Firebase PRIMEIRO
-    let codigoGerado; // Declaramos aqui para estar disponível
+    let codigoGerado; 
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      // Se chegou aqui, o e-mail e senha estão CORRETOS.
-      // Deslogamos imediatamente, pois só queríamos validar.
       await signOut(auth); 
     } catch (e) {
       setLoading(false);
       console.error("ERRO NA ETAPA 1 (FIREBASE):", e.code, e.message);
-      
-      let errorMessage = 'E-mail ou senha incorretos.'; // Padrão
+      let errorMessage = 'E-mail ou senha incorretos.';
       if (e.code === 'auth/network-request-failed') {
         errorMessage = 'Erro de rede. Verifique sua conexão.';
       }
-      
-      setError(errorMessage); // Mostra o erro na tela
-      return; // Para a execução
+      setError(errorMessage); 
+      return; 
     }
 
-    // ETAPA 2: Credenciais validadas. Agora, enviar o e-mail OTP.
-    try {
-      codigoGerado = gerarOTP();
+    // 2. ETAPA 2: LÓGICA HÍBRIDA (Web vs Nativo)
+    
+    codigoGerado = gerarOTP(); // Gera o código em ambos os casos
 
-      const data = {
-        service_id: EMAILJS_SERVICE_ID,
-        template_id: EMAILJS_TEMPLATE_ID,
-        user_id: EMAILJS_PUBLIC_KEY,
-        template_params: {
-          to_email: email, // Corrigido para 'to_email' (que configuramos no EmailJS)
-          codigo_otp: codigoGerado,
+    if (Platform.OS === 'web') {
+      // --- ESTAMOS NO NAVEGADOR (WEB) ---
+      // Fazer o envio REAL com EmailJS
+      try {
+        const data = {
+          service_id: EMAILJS_SERVICE_ID,
+          template_id: EMAILJS_TEMPLATE_ID,
+          user_id: EMAILJS_PUBLIC_KEY,
+          template_params: {
+            to_email: email,
+            codigo_otp: codigoGerado,
+          }
+        };
+
+        const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(errorText);
         }
-      };
+        
+        console.log("EmailJS (Web): E-mail real enviado.");
+        
+        setLoading(false); // 1. Pare o loading ANTES de navegar
 
-      const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
+        // ETAPA 3: SUCESSO! Navega para a tela OTP.
+        navigation.navigate('Otp', { // 2. Navegue
+          email: email,
+          password: password,
+          codigoGerado: codigoGerado
+        });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Erro do EmailJS:", errorText);
-        throw new Error(errorText); // Joga o erro do EmailJS
+      } catch (e) {
+        // Erro na ETAPA 2 (EmailJS)
+        console.error("ERRO NA ETAPA 2 (EMAILJS):", e.message);
+        Alert.alert( 
+          'Erro ao Enviar OTP', 
+          `Não foi possível enviar o código. (Erro: ${e.message})`
+        );
+        setLoading(false);
       }
-      
-      // ETAPA 3: SUCESSO! E-mail enviado. Navega para a tela OTP.
-      // Passamos os dados necessários para a próxima tela
-      navigation.navigate('Otp', { 
-        email: email,
-        password: password,
-        codigoGerado: codigoGerado
-      });
 
-    } catch (e) {
-      // Erro na ETAPA 2 (EmailJS)
-      console.error("ERRO NA ETAPA 2 (EMAILJS):", e.message);
-      Alert.alert( 
-        'Erro ao Enviar OTP', 
-        `Não foi possível enviar o código. (Erro: ${e.message})`
+    } else {
+      // --- ESTAMOS NO CELULAR (NATIVO: Android/iOS) ---
+      // O EmailJS não funciona aqui. Vamos SIMULAR.
+      
+      console.log("Nativo (Expo Go): Simulando o envio de e-mail.");
+      
+      // ***** A CORREÇÃO DO GLITCH ESTÁ AQUI *****
+      
+      // 1. Pare o loading IMEDIATAMENTE. Isso para o "glitch".
+      setLoading(false); 
+
+      // 2. Mostre o alerta de simulação.
+      Alert.alert(
+        'Simulação (Expo Go)', // Título
+        `Seu código de simulação é: ${codigoGerado}`, // Mensagem
+        [ // Botões
+          {
+            text: 'OK', 
+            onPress: () => {
+              // 3. NAVEGUE SOMENTE DEPOIS que o usuário clicar em OK.
+              console.log("Usuário clicou em OK, navegando para OTP...");
+              navigation.navigate('Otp', {
+                email: email,
+                password: password,
+                codigoGerado: codigoGerado
+              });
+            }
+          }
+        ]
       );
-      setLoading(false); // Aqui sim, paramos o loading
+      
+      // Removemos a navegação e o setLoading(false) daqui,
+      // pois eles agora estão DENTRO do callback do Alert.
     }
   };
 
@@ -156,12 +180,10 @@ const LoginScreen = ({ navigation }) => {
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        {/* A TELA DE LOGIN (Sempre visível) */}
         <View style={styles.card}>
           <Text style={styles.title}>Login</Text>
           <Text style={styles.subtitle}>Informe seus dados para continuar.</Text>
 
-          {/* ÁREA DE ERRO NA TELA */}
           {error && (
             <Text style={styles.errorText}>{error}</Text>
           )}
@@ -175,7 +197,7 @@ const LoginScreen = ({ navigation }) => {
             value={email}
             onChangeText={(text) => {
               setEmail(text);
-              setError(''); // Limpa o erro ao digitar
+              setError(''); 
             }}
           />
           <TextInput
@@ -186,7 +208,7 @@ const LoginScreen = ({ navigation }) => {
             value={password}
             onChangeText={(text) => {
               setPassword(text);
-              setError(''); // Limpa o erro ao digitar
+              setError(''); 
             }}
           />
 
@@ -220,12 +242,12 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.3)', // Escurece o fundo
+    backgroundColor: 'rgba(0,0,0,0.3)',
   },
   card: {
     width: '90%',
     maxWidth: 400,
-    backgroundColor: 'rgba(255, 255, 255, 0.85)', // Efeito de "vidro"
+    backgroundColor: 'rgba(255, 255, 255, 0.85)', 
     padding: 25,
     borderRadius: 15,
   },
@@ -277,12 +299,11 @@ const styles = StyleSheet.create({
     color: themeColors.text,
     fontSize: 14,
   },
-  registerLink: { // Usado para "Registre-se"
+  registerLink: { 
     color: themeColors.primary,
     fontSize: 14,
     fontWeight: 'bold',
   },
-  // O estilo de erro na tela
   errorText: {
     color: themeColors.error,
     fontSize: 15,

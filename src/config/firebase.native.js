@@ -1,12 +1,12 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 
-// Estas são as importações NATIVAS
-import { initializeAuth } from 'firebase/auth';
-import { getReactNativePersistence } from 'firebase/auth/react-native';
+// 1. IMPORTAÇÕES CORRIGIDAS
+// Ambas as funções (initializeAuth e getReactNativePersistence) vêm de 'firebase/auth'
+import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Sua configuração do Firebase (copie e cole a mesma)
+// Sua configuração do Firebase (copie e cole a mesma do outro arquivo)
 const firebaseConfig = {
   apiKey: "AIzaSyCYPyzWlBfkT5QiTIVKfeYkNih7M3ujzYw",
   authDomain: "appfirebasereactnative-e98d6.firebaseapp.com",
@@ -20,13 +20,11 @@ const firebaseConfig = {
 // Inicializa o Firebase
 const app = initializeApp(firebaseConfig);
 
-// Inicializa o FIRESTORE
-export const db = getFirestore(app);
-
-// Inicialização do Auth para NATIVO (com AsyncStorage)
-const auth = initializeAuth(app, {
+// 2. Inicializa o AUTH com persistência nativa (AsyncStorage)
+// Este é o código que o celular precisa para funcionar
+export const auth = initializeAuth(app, {
   persistence: getReactNativePersistence(AsyncStorage)
 });
 
-// Exporta o auth
-export { auth };
+// 3. Inicializa o FIRESTORE (Banco de Dados)
+export const db = getFirestore(app);

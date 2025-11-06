@@ -5,16 +5,17 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
+  Alert, // Usado para mostrar mensagens de erro
   ActivityIndicator, // Para o loading
   KeyboardAvoidingView,
   Platform,
   ImageBackground,
 } from 'react-native';
-// 1. Precisamos do 'signIn' para fazer o login final
+// Importar o login final do Firebase
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../config/firebase'; // Importar o auth
+import { auth } from '../config/firebase'; // Importar o auth (verifique seu caminho)
 
-// Reutiliza o tema "praiano"
+// Reutiliza o tema
 const themeColors = {
   primary: '#0077B6', // Azul Oceano
   secondary: '#90E0EF', // Azul Céu
@@ -24,52 +25,57 @@ const themeColors = {
 };
 
 // Imagem de fundo (pode ser a mesma do login)
-const otpBackground = { uri: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=2073&auto/format&fit=crop' };
+const otpBackground = { uri: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=2073&auto=format&fit=crop' };
 
 
 // O componente principal da tela
-// 2. Recebemos 'route' para pegar os dados da tela de Login
-export default function OtpScreen({ route, navigation }) {
-  // 3. Pegar os dados passados pela tela de Login
+const OtpScreen = ({ route, navigation }) => {
+  // 1. Receber os dados da tela de Login
   const { email, password, codigoGerado } = route.params;
 
   // Estados
-  const [otpDigitado, setOtpDigitado] = useState('');
+  const [otpCode, setOtpCode] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(''); // Para o erro no "HTML"
+  const [error, setError] = useState(''); // Para erros no "HTML"
 
   // --- Funções de Lógica ---
-
   const handleVerificarCodigo = async () => {
-    if (otpDigitado.length !== 6) {
+    if (otpCode.length !== 6) {
       setError('O código deve ter 6 dígitos.');
       return;
     }
+
     setLoading(true);
     setError('');
 
-    // ETAPA 1: Validar o código digitado
-    if (otpDigitado === codigoGerado) {
-      // CÓDIGO CORRETO!
-      // ETAPA 2: Fazer o login final no Firebase
+    // 2. Lógica principal: Comparar o que o usuário digitou com o código gerado
+    if (otpCode === codigoGerado) {
+      // 3. O CÓDIGO ESTÁ CORRETO!
+      // Agora, fazemos o login DE VERDADE no Firebase com o e-mail e senha
+      // que recebemos da tela anterior.
       try {
         await signInWithEmailAndPassword(auth, email, password);
         // SUCESSO! O App.js (onAuthStateChanged) vai detectar
         // este login e navegar para a WelcomeScreen.
+        // Não precisamos fazer mais nada aqui.
       } catch (e) {
-        // Isso não deveria acontecer (pois já validamos as credenciais),
-        // mas é uma proteção extra.
+        // Isso não deveria acontecer (pois já validamos as credenciais)
+        // Mas é uma boa prática ter um fallback.
         setLoading(false);
-        setError('Erro final ao autenticar. Tente novamente.');
-        console.error("ERRO NA ETAPA FINAL (OTP):", e.code);
+        setError('Erro final ao logar. Tente novamente.');
+        navigation.navigate('Login'); // Volta para o Login
       }
       
     } else {
-      // CÓDIGO INCORRETO
+      // 4. O CÓDIGO ESTÁ INCORRETO
       setLoading(false);
       setError('Código OTP inválido. Tente novamente.');
-      setOtpDigitado(''); // Limpa o campo
+      setOtpCode(''); // Limpa o campo para nova tentativa
     }
+    
+    // setLoading(false) não é necessário aqui
+    // ou o login é bem-sucedido (e a tela some)
+    // ou dá erro (e já definimos acima)
   };
 
   // --- Renderização (JSX) ---
@@ -86,11 +92,10 @@ export default function OtpScreen({ route, navigation }) {
         <View style={styles.card}>
           <Text style={styles.title}>Verificação</Text>
           <Text style={styles.subtitle}>
-            Digite o código de 6 dígitos enviado para:
+            Digite o código de 6 dígitos enviado para: **{email}**
           </Text>
-          <Text style={styles.emailText}>{email}</Text>
 
-          {/* Área de Erro no "HTML" */}
+          {/* ÁREA DE ERRO NA TELA */}
           {error && (
             <Text style={styles.errorText}>{error}</Text>
           )}
@@ -101,9 +106,9 @@ export default function OtpScreen({ route, navigation }) {
             placeholderTextColor="#ccc"
             keyboardType="numeric"
             maxLength={6}
-            value={otpDigitado}
+            value={otpCode}
             onChangeText={(text) => {
-              setOtpDigitado(text);
+              setOtpCode(text);
               setError(''); // Limpa o erro ao digitar
             }}
             textAlign='center'
@@ -117,8 +122,8 @@ export default function OtpScreen({ route, navigation }) {
             {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Verificar e Entrar</Text>}
           </TouchableOpacity>
           
-          <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-            <Text style={styles.backLink}>Voltar para o Login</Text>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Text style={styles.registerLink}>Voltar para o Login</Text>
           </TouchableOpacity>
         </View>
 
@@ -156,16 +161,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: themeColors.text,
     textAlign: 'center',
-    marginBottom: 5,
-  },
-  emailText: {
-    fontSize: 16,
-    color: themeColors.text,
-    textAlign: 'center',
-    fontWeight: 'bold',
     marginBottom: 20,
   },
-  otpInput: {
+  otpInput: { // Estilo do professor (melhorado)
     width: '90%',
     alignSelf: 'center',
     height: 60,
@@ -194,13 +192,14 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
-  backLink: { 
+  registerLink: { // Usado para "Voltar"
     color: themeColors.primary,
     fontSize: 14,
     fontWeight: 'bold',
     textAlign: 'center',
     marginTop: 20,
   },
+  // O estilo de erro na tela
   errorText: {
     color: themeColors.error,
     fontSize: 15,
@@ -209,3 +208,5 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 });
+
+export default OtpScreen;
